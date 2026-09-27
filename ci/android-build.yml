@@ -1,0 +1,67 @@
+# GitHub Actions workflow for Spin Kingdom.
+# NOTE: this file must live at .github/workflows/android-build.yml to run. It is stored in ci/ because the
+# token used to create the repository lacked the `workflow` scope. Move it with:
+#   mkdir -p .github/workflows && git mv ci/android-build.yml .github/workflows/android-build.yml
+name: Android build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      # Game logic unit tests + Robolectric Compose UI smoke tests and screenshots (written to out/screens)
+      - name: Unit & UI tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Build unsigned release APK
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Show APK
+        run: find app/build/outputs/apk -type f -name '*.apk' -print -exec sha256sum {} \;
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+          retention-days: 7
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: out/screens/*.png
+          retention-days: 14
+
+      # The APK is signed locally with a key that never leaves the developer machine (tools/sign-apk.sh).
+      - name: Upload unsigned APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spinkingdom-unsigned
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7

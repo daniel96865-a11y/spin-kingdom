@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sk_night">#160E3D</color>
+    <color name="sk_royal">#3B2A8C</color>
+    <color name="ic_launcher_background">#3B2A8C</color>
+    <style name="Theme.SpinKingdom" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/sk_night</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="colorPrimary">@color/sk_royal</item>
+    </style>
+</resources>
