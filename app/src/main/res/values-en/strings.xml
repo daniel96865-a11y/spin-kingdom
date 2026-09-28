@@ -59,6 +59,14 @@
     <string name="big_win">Big win!</string>
     <string name="jackpot">JACKPOT!</string>
     <string name="spin_bonus">Energy bonus!</string>
+    <string name="spin_jackpot_title">Spin jackpot!</string>
+    <string name="spin_jackpot_text">Rare but huge – back to the reels!</string>
+    <string name="spin_jackpot_extra">+ %1$d spins energy bonus</string>
+    <string name="lucky_boost_title">Lucky stake!</string>
+    <string name="lucky_boost_text">x20 and x30 are unlocked for %1$d minutes. Use your luck!</string>
+    <string name="lucky_boost_badge">Lucky stake x20/x30 · %1$s</string>
+    <string name="debug_lucky_boost">Start lucky stake (x20/x30)</string>
+    <string name="debug_spin_jackpot">Trigger spin jackpot</string>
     <string name="attack_title">Attack!</string>
     <string name="attack_ready">Attack ready – tap here!</string>
     <string name="next_attack">Next attack</string>

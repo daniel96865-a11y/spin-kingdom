@@ -60,9 +60,13 @@ sealed interface Overlay {
     data class BotLog(val entries: List<LogEntry>) : Overlay
     data class Reward(val titleRes: Int, val coins: Long, val spins: Int) : Overlay
     data class Message(val titleRes: Int, val textRes: Int) : Overlay
+    /** Rare big spin reward: amount of jackpot spins, optional regular spins shown as extra line. */
+    data class SpinJackpot(val spins: Int, val multiplier: Int = 1, val extraSpins: Int = 0) : Overlay
+    /** "Glücks-Einsatz" announcement: x20/x30 unlocked until [until]. */
+    data class LuckyBoost(val until: Long) : Overlay
 }
 
-data class SpinAnim(val id: Long, val reels: List<SlotSymbol>, val outcome: OutcomeType, val multiplier: Int, val coins: Long, val spins: Int, val free: Boolean)
+data class SpinAnim(val id: Long, val reels: List<SlotSymbol>, val outcome: OutcomeType, val multiplier: Int, val coins: Long, val spins: Int, val free: Boolean, val spinJackpot: Int = 0)
 
 data class RaidSession(val opponent: Opponent, val board: List<RaidPrizeKind>, val picks: List<Int> = emptyList(), val multiplier: Int, val finished: Boolean = false, val coins: Long = 0, val spins: Int = 0)
 
@@ -197,7 +201,8 @@ class GameViewModel(
     fun showEffects(effects: List<GameEffect>) {
         val add = mutableListOf<Overlay>()
         for (e in effects) when (e) {
-            is GameEffect.ChestOpened -> add += Overlay.Chest(e.contents, e.newCards)
+            is GameEffect.ChestOpened -> { add += Overlay.Chest(e.contents, e.newCards); if (e.contents.bonusSpins > 0) add += Overlay.SpinJackpot(e.contents.bonusSpins) }
+            is GameEffect.LuckyBoostStarted -> { add += Overlay.LuckyBoost(e.until); audio?.vibrate(120) }
             is GameEffect.LevelCompleted -> { add.add(0, Overlay.LevelComplete(e.completedLevel, e.coins, e.spins, e.chest)); audio?.play(Sfx.LEVEL_COMPLETE); audio?.vibrate(200, true) }
             is GameEffect.PetLevelUp -> add += Overlay.PetLevelUp(e.pet, e.level)
             is GameEffect.SetCompleted -> add += Overlay.SetComplete(e.set)
@@ -207,7 +212,7 @@ class GameViewModel(
             is GameEffect.Purchased -> { audio?.play(Sfx.COIN); add.add(0, Overlay.Reward(de.danielgrebe.spinkingdom.R.string.shop_test_success, e.coins, e.spins)) }
             is GameEffect.Rewarded -> { audio?.play(Sfx.COIN); add.add(0, Overlay.Reward(de.danielgrebe.spinkingdom.R.string.reward_title, e.coins, e.spins)) }
             is GameEffect.DailyClaimed -> { audio?.play(Sfx.COIN); if (e.coins > 0 || e.spins > 0) add.add(0, Overlay.Reward(de.danielgrebe.spinkingdom.R.string.daily_title, e.coins, e.spins)) }
-            is GameEffect.WheelSpun -> { audio?.play(Sfx.JACKPOT); if (e.coins > 0 || e.spins > 0 || e.treats > 0) add.add(0, Overlay.Reward(de.danielgrebe.spinkingdom.R.string.wheel_title, e.coins, e.spins)) }
+            is GameEffect.WheelSpun -> { audio?.play(Sfx.JACKPOT); if (e.spinJackpot > 0) add.add(0, Overlay.SpinJackpot(e.spinJackpot)) else if (e.coins > 0 || e.spins > 0 || e.treats > 0) add.add(0, Overlay.Reward(de.danielgrebe.spinkingdom.R.string.wheel_title, e.coins, e.spins)) }
             else -> Unit
         }
         if (add.isNotEmpty()) _overlays.value = _overlays.value + add
@@ -258,7 +263,7 @@ class GameViewModel(
     // ------------------------------------------------------------------ slot machine
     fun selectMultiplier(m: Int) {
         if (_spinAnim.value != null) return
-        truth = GameEngine.selectMultiplier(truth, m)
+        truth = GameEngine.selectMultiplier(truth, m, _now.value)
         publish(); save()
         audio?.play(Sfx.CLICK)
     }
@@ -276,7 +281,7 @@ class GameViewModel(
         // show the spin cost immediately, everything else after the reels stopped
         _state.value = before.copy(spins = if (spun.freeSpin) before.spins else before.spins - spun.multiplier, clock = truth.clock, lastRegenMillis = truth.lastRegenMillis)
         heldEffects = r.effects.drop(1)
-        _spinAnim.value = SpinAnim(System.nanoTime(), spun.reels, spun.outcome.type, spun.multiplier, spun.coins, spun.spins, spun.freeSpin)
+        _spinAnim.value = SpinAnim(System.nanoTime(), spun.reels, spun.outcome.type, spun.multiplier, spun.coins, spun.spins, spun.freeSpin, spun.spinJackpot)
         audio?.play(Sfx.SPIN)
         audio?.vibrate(20)
         return true
@@ -298,7 +303,10 @@ class GameViewModel(
             OutcomeType.COIN_PAIR, OutcomeType.OTHER_PAIR, OutcomeType.SINGLE_COIN, OutcomeType.ENERGY_PAIR -> audio?.play(Sfx.COIN, 0.6f)
             OutcomeType.NOTHING -> Unit
         }
-        if (anim.outcome in setOf(OutcomeType.JACKPOT, OutcomeType.COIN_TRIPLE, OutcomeType.ENERGY)) {
+        if (anim.spinJackpot > 0) {
+            audio?.vibrate(250, true)
+            _overlays.value = _overlays.value + Overlay.SpinJackpot(anim.spinJackpot, anim.multiplier, anim.spins - anim.spinJackpot)
+        } else if (anim.outcome in setOf(OutcomeType.JACKPOT, OutcomeType.COIN_TRIPLE, OutcomeType.ENERGY)) {
             lastDoubleable = anim.coins to anim.spins
             _overlays.value = _overlays.value + Overlay.BigWin(anim.coins, anim.spins, anim.outcome, anim.multiplier, ads.isRewardedAvailable())
         }
@@ -444,6 +452,14 @@ class GameViewModel(
     }
 
     fun debugForceEvent(id: String?) { truth = truth.copy(debugForcedEvent = id); ctx(); publish(); save() }
+    fun debugLuckyBoost() {
+        truth = GameEngine.Debug.startLuckyBoost(truth, ctx().now); publish(); save()
+        showEffects(listOf(GameEffect.LuckyBoostStarted(truth.luckyBoostUntil)))
+    }
+    fun debugSpinJackpot() {
+        truth = GameEngine.Debug.addSpins(truth, 30); publish(); save()
+        _overlays.value = _overlays.value + Overlay.SpinJackpot(30)
+    }
     fun debugCompleteLevel() { commit(GameEngine.completeLevel(truth, ctx())) }
     fun debugChest(type: ChestType) { commit(GameEngine.grantChest(truth, type, ctx())) }
     fun allEvents(): List<GameEvent> = events.distinctBy { it.id }

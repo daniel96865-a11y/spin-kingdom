@@ -60,6 +60,14 @@
     <string name="big_win">Großer Gewinn!</string>
     <string name="jackpot">JACKPOT!</string>
     <string name="spin_bonus">Energie-Bonus!</string>
+    <string name="spin_jackpot_title">Spin-Jackpot!</string>
+    <string name="spin_jackpot_text">Selten, aber gewaltig – ab zu den Walzen!</string>
+    <string name="spin_jackpot_extra">+ %1$d Spins Energie-Bonus</string>
+    <string name="lucky_boost_title">Glücks-Einsatz!</string>
+    <string name="lucky_boost_text">x20 und x30 sind jetzt %1$d Minuten lang freigeschaltet. Nutze dein Glück!</string>
+    <string name="lucky_boost_badge">Glücks-Einsatz x20/x30 · %1$s</string>
+    <string name="debug_lucky_boost">Glücks-Einsatz starten (x20/x30)</string>
+    <string name="debug_spin_jackpot">Spin-Jackpot auslösen</string>
     <string name="attack_title">Angriff!</string>
     <string name="attack_ready">Angriff bereit – tippe hier!</string>
     <string name="next_attack">Nächster Angriff</string>

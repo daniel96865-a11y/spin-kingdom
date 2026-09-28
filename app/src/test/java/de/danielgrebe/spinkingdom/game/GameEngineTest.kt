@@ -36,7 +36,7 @@ class GameEngineTest {
         // regen timer starts when dropping below cap
         assertEquals(T0, r.state.lastRegenMillis)
         s = s.copy(spins = 3, selectedMultiplier = 10)
-        assertEquals(3, GameEngine.effectiveMultiplier(s)) // falls back to largest affordable
+        assertEquals(3, GameEngine.effectiveMultiplier(s, T0)) // falls back to largest affordable
         s = s.copy(spins = 0)
         assertEquals(GameError.NOT_ENOUGH_SPINS, GameEngine.spin(s, ctx()).error)
     }

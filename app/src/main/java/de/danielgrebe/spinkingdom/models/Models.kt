@@ -116,6 +116,7 @@ data class GameState(
     val shields: Int = 0,
     val buildings: List<BuildingState> = List(5) { BuildingState() },
     val selectedMultiplier: Int = 1,
+    val luckyBoostUntil: Long = 0,                   // end of the current/last "Glücks-Einsatz"
 
     val pendingActions: List<PendingAction> = emptyList(),
 

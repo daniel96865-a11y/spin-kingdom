@@ -16,6 +16,8 @@ All screenshots are rendered from the real Compose UI by Robolectric tests (`app
   - Triples, pairs and single coins all pay out.
   - Multipliers are x1, x2, x3, x5 and x10. x20 unlocks at level 5, x50 at level 10 and x100 at level 20.
   - A multiplier uses that many spins.
+  - x30 unlocks at level 15. A rare, time-limited **"Glücks-Einsatz"** boost unlocks x20 and x30 early for 10 minutes. It shows a countdown badge and has a cooldown between boosts.
+  - **Spin-Jackpot** (rare): 3x Energie can award +20 or +30 extra spins. The daily wheel and royal/legendary chests can also give one occasionally. The chances are in `GameBalanceConfig`.
 - **Spins**: you start with 50. You regain +5 every 10 minutes up to 50, computed from timestamps, so it also works offline. Rewards can take you above 50.
 - **Villages**: 30 hand-themed villages, with procedural levels up to level 500.
   - Each village has 5 buildings with 5 upgrade stages. Everything is drawn with Compose Canvas.
@@ -60,7 +62,7 @@ de.danielgrebe.spinkingdom
 
 ## Build & test
 ```
-./gradlew testDebugUnitTest     # 88 tests: game logic + Robolectric UI smoke/screenshot tests (PNGs → out/screens)
+./gradlew testDebugUnitTest     # 103 tests: game logic + Robolectric UI smoke/screenshot tests (PNGs → out/screens)
 ./gradlew assembleRelease       # unsigned, R8-shrunk release APK
 tools/sign-apk.sh app/build/outputs/apk/release/app-release-unsigned.apk out/SpinKingdom-1.0.apk
 ```

@@ -53,6 +53,7 @@ import de.danielgrebe.spinkingdom.ui.SpinAnim
 import de.danielgrebe.spinkingdom.ui.components.GameButton
 import de.danielgrebe.spinkingdom.ui.components.GameText
 import de.danielgrebe.spinkingdom.ui.components.formatNumber
+import de.danielgrebe.spinkingdom.ui.components.formatTimer
 import de.danielgrebe.spinkingdom.ui.draw.darken
 import de.danielgrebe.spinkingdom.ui.draw.drawSymbol
 import de.danielgrebe.spinkingdom.ui.draw.lighten
@@ -164,20 +165,42 @@ fun SlotReels(anim: SpinAnim?, lastWin: SpinAnim?, t: Float, onStopped: () -> Un
 
 
 @Composable
-fun MultiplierSelector(options: List<Int>, selected: Int, spins: Int, enabled: Boolean, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun MultiplierSelector(options: List<Int>, selected: Int, spins: Int, enabled: Boolean, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, boosted: Set<Int> = emptySet(), t: Float = 0f) {
     Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         options.forEach { m ->
             val sel = m == selected
             val affordable = m <= maxOf(spins, 1)
+            val lucky = m in boosted
+            val glow = if (lucky) 0.5f + 0.5f * kotlin.math.sin(t * 6f) else 0f
             Box(
                 Modifier.size(width = 46.dp, height = 34.dp).clip(RoundedCornerShape(10.dp))
-                    .background(Brush.verticalGradient(if (sel) listOf(SK.Orange.lighten(0.3f), SK.Orange, SK.Orange.darken(0.2f)) else listOf(SK.PanelLight, SK.Panel)))
-                    .border(2.dp, if (sel) Color.White else Color.White.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                    .background(Brush.verticalGradient(when {
+                        sel -> listOf(SK.Orange.lighten(0.3f), SK.Orange, SK.Orange.darken(0.2f))
+                        lucky -> listOf(SK.GoldLight, SK.Gold, SK.GoldDark)
+                        else -> listOf(SK.PanelLight, SK.Panel)
+                    }))
+                    .border(2.dp, when { sel -> Color.White; lucky -> Color.White.copy(alpha = 0.5f + 0.5f * glow); else -> Color.White.copy(alpha = 0.25f) }, RoundedCornerShape(10.dp))
                     .clickable(enabled = enabled) { onSelect(m) }
                     .testTag("mult_$m"),
                 contentAlignment = Alignment.Center
             ) { GameText("x$m", size = 15.sp, color = if (affordable) Color.White else Color.White.copy(alpha = 0.45f)) }
         }
+    }
+}
+
+/** Countdown badge shown above the multiplier row while the "Glücks-Einsatz" is active. */
+@Composable
+fun LuckyBoostBadge(millisLeft: Long, t: Float) {
+    val pulse = 1f + 0.04f * kotlin.math.sin(t * 5f)
+    Row(
+        Modifier.padding(bottom = 6.dp).scale(pulse).clip(RoundedCornerShape(50))
+            .background(Brush.horizontalGradient(listOf(SK.Purple, SK.Orange)))
+            .border(2.dp, SK.GoldLight, RoundedCornerShape(50))
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .testTag("lucky_boost_badge"),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        GameText(stringResource(R.string.lucky_boost_badge, formatTimer(millisLeft)), size = 13.sp)
     }
 }
 

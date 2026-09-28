@@ -11,7 +11,8 @@ data class ChestContents(
     val spins: Int = 0,
     val treats: Int = 0,
     val petXp: Int = 0,
-    val cards: List<Int> = emptyList()
+    val cards: List<Int> = emptyList(),
+    val bonusSpins: Int = 0          // rare spin jackpot (royal/legendary)
 )
 
 object ChestEngine {
@@ -39,6 +40,7 @@ object ChestEngine {
         } else {
             coinsU += (spec.treatsMax + spec.petXp / 50) * 2.0
         }
-        return ChestContents(type, GameBalanceConfig.coins(level, coinsU), spins, treats, petXp, cards)
+        val bonus = GameBalanceConfig.CHEST_SPIN_JACKPOT_CHANCES[type]?.let { SpinJackpot.roll(it, random) } ?: 0
+        return ChestContents(type, GameBalanceConfig.coins(level, coinsU), spins, treats, petXp, cards, bonus)
     }
 }

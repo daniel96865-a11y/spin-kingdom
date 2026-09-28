@@ -42,11 +42,11 @@ abstract class ScreenshotTestBase {
         listOf(File("src/main/assets/events.json"), File("app/src/main/assets/events.json")).first { it.exists() }.readText()
     )
 
-    protected fun launch(state: GameState, route: String, seed: Int = 7, setup: (GameViewModel) -> Unit = {}) {
+    protected fun launch(state: GameState, route: String, seed: Int = 7, random: Random = Random(seed), setup: (GameViewModel) -> Unit = {}) {
         repo = InMemoryRepo(state)
         vm = GameViewModel(
             repo, LocalOpponentRepository(Random(seed)), LocalLeaderboardRepository("Gast"), FakeBillingRepository(),
-            SimulatedAdsRepository(), time, events(), audio = null, random = Random(seed), zone = { ZoneId.of("Europe/Berlin") }
+            SimulatedAdsRepository(), time, events(), audio = null, random = random, zone = { ZoneId.of("Europe/Berlin") }
         )
         compose.mainClock.autoAdvance = false
         compose.setContent { SpinKingdomTheme { SpinKingdomRoot(vm, startRoute = route) } }

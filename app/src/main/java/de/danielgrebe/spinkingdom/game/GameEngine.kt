@@ -1,5 +1,8 @@
 package de.danielgrebe.spinkingdom.game
 
+import de.danielgrebe.spinkingdom.domain.SpinJackpot
+import de.danielgrebe.spinkingdom.domain.LuckyBoost
+
 import de.danielgrebe.spinkingdom.config.EventModifiers
 import de.danielgrebe.spinkingdom.config.GameBalanceConfig
 import de.danielgrebe.spinkingdom.config.GameBalanceConfig.MAX_STAGE
@@ -46,7 +49,8 @@ sealed interface GameEffect {
         val coins: Long,
         val spins: Int,
         val shieldGained: Boolean,
-        val freeSpin: Boolean
+        val freeSpin: Boolean,
+        val spinJackpot: Int = 0
     ) : GameEffect
     data class ChestOpened(val contents: ChestContents, val newCards: List<Int>) : GameEffect
     data class BuildingUpgraded(val index: Int, val stage: Int, val cost: Long) : GameEffect
@@ -57,7 +61,8 @@ sealed interface GameEffect {
     data class AttackDone(val opponent: Opponent, val buildingIndex: Int, val blocked: Boolean, val coins: Long) : GameEffect
     data class RaidDone(val coins: Long, val spins: Int, val jackpot: Boolean) : GameEffect
     data class DailyClaimed(val dayIndex: Int, val coins: Long, val spins: Int) : GameEffect
-    data class WheelSpun(val segment: Int, val coins: Long, val spins: Int, val treats: Int) : GameEffect
+    data class WheelSpun(val segment: Int, val coins: Long, val spins: Int, val treats: Int, val spinJackpot: Int = 0) : GameEffect
+    data class LuckyBoostStarted(val until: Long) : GameEffect
     data class MissionClaimed(val id: String, val coins: Long, val spins: Int) : GameEffect
     data class Purchased(val product: ShopProduct, val coins: Long, val spins: Int) : GameEffect
     data class Rewarded(val coins: Long, val spins: Int) : GameEffect
@@ -119,7 +124,7 @@ object GameEngine {
         val contents = ChestEngine.roll(t, state.level, ctx.random)
         val effects = mutableListOf<GameEffect>()
         var s = earn(state, contents.coins)
-        s = s.copy(spins = s.spins + contents.spins, petTreats = s.petTreats + contents.treats)
+        s = s.copy(spins = s.spins + contents.spins + contents.bonusSpins, petTreats = s.petTreats + contents.treats)
         val newCards = contents.cards.filter { (s.cards[it] ?: 0) == 0 }.distinct()
         if (contents.cards.isNotEmpty()) {
             val cards = s.cards.toMutableMap()
@@ -139,19 +144,27 @@ object GameEngine {
         return ActionResult(s, listOf(GameEffect.ChestOpened(contents, newCards)) + effects)
     }
 
-    fun effectiveMultiplier(state: GameState): Int {
-        val allowed = GameBalanceConfig.availableMultipliers(state.level)
-        val sel = if (state.selectedMultiplier in allowed) state.selectedMultiplier else 1
-        return allowed.filter { it <= sel && it <= state.spins }.maxOrNull() ?: 1
+    /** Largest allowed multiplier not above the selection and affordable; falls back gracefully when a boost expired. */
+    fun effectiveMultiplier(state: GameState, now: Long): Int {
+        val allowed = LuckyBoost.multipliers(state, now)
+        return allowed.filter { it <= state.selectedMultiplier && it <= state.spins }.maxOrNull() ?: 1
     }
 
-    fun selectMultiplier(state: GameState, m: Int): GameState =
-        if (m in GameBalanceConfig.availableMultipliers(state.level)) state.copy(selectedMultiplier = m) else state
+    fun selectMultiplier(state: GameState, m: Int, now: Long): GameState =
+        if (m in LuckyBoost.multipliers(state, now)) state.copy(selectedMultiplier = m) else state
+
+    /** Rolls the "Glücks-Einsatz" boost after a spin. */
+    fun maybeStartLuckyBoost(state: GameState, ctx: Ctx): Pair<GameState, GameEffect.LuckyBoostStarted?> {
+        if (!LuckyBoost.canTrigger(state, ctx.now)) return state to null
+        if (ctx.random.nextDouble() >= GameBalanceConfig.LUCKY_BOOST_CHANCE_PER_SPIN) return state to null
+        val until = ctx.now + GameBalanceConfig.LUCKY_BOOST_DURATION_MS
+        return state.copy(luckyBoostUntil = until) to GameEffect.LuckyBoostStarted(until)
+    }
 
     // ------------------------------------------------------------------ slot machine
     fun spin(state: GameState, ctx: Ctx, forcedReels: List<SlotSymbol>? = null): ActionResult {
         if (state.spins <= 0) return ActionResult(state, error = GameError.NOT_ENOUGH_SPINS)
-        val mult = effectiveMultiplier(state)
+        val mult = effectiveMultiplier(state, ctx.now)
         val free = ctx.random.nextDouble() < Pets.activeEffect(state, PetType.PHOENIX)
         var s = state
         val wasFull = s.spins >= GameBalanceConfig.MAX_AUTO_SPINS
@@ -165,6 +178,7 @@ object GameEngine {
         var coins = 0L
         var spins = 0
         var shield = false
+        var spinJackpot = 0
         val effects = mutableListOf<GameEffect>()
         val lvl = s.level
         when (outcome.type) {
@@ -172,7 +186,11 @@ object GameEngine {
             OutcomeType.COIN_PAIR -> coins = (GameBalanceConfig.coins(lvl, GameBalanceConfig.COIN_PAIR_U) * cf).roundToLong()
             OutcomeType.OTHER_PAIR -> coins = (GameBalanceConfig.coins(lvl, GameBalanceConfig.OTHER_PAIR_U) * cf).roundToLong()
             OutcomeType.SINGLE_COIN -> coins = (GameBalanceConfig.coins(lvl, GameBalanceConfig.SINGLE_COIN_U) * cf).roundToLong()
-            OutcomeType.ENERGY -> spins = scaledSpins(GameBalanceConfig.ENERGY_TRIPLE_SPINS, mult, ctx)
+            OutcomeType.ENERGY -> {
+                spins = scaledSpins(GameBalanceConfig.ENERGY_TRIPLE_SPINS, mult, ctx)
+                spinJackpot = SpinJackpot.scaled(SpinJackpot.roll(GameBalanceConfig.SPIN_JACKPOT_CHANCES, ctx.random), mult, ctx.mods.spins)
+                spins += spinJackpot
+            }
             OutcomeType.ENERGY_PAIR -> spins = scaledSpins(GameBalanceConfig.ENERGY_PAIR_SPINS, mult, ctx)
             OutcomeType.SHIELD -> {
                 if (s.shields < GameBalanceConfig.maxShields(lvl)) { s = s.copy(shields = s.shields + 1); shield = true }
@@ -197,7 +215,10 @@ object GameEngine {
             stats = s.stats.copy(totalSpins = s.stats.totalSpins + 1, biggestWin = maxOf(s.stats.biggestWin, coins))
         )
         s = track(s, MissionType.SPINS, 1)
-        return ActionResult(s, listOf(GameEffect.Spun(reels, outcome, mult, coins, spins, shield, free)) + effects)
+        val (boosted, boost) = maybeStartLuckyBoost(s, ctx)
+        s = boosted
+        if (boost != null) effects += boost
+        return ActionResult(s, listOf(GameEffect.Spun(reels, outcome, mult, coins, spins, shield, free, spinJackpot)) + effects)
     }
 
     // ------------------------------------------------------------------ buildings
@@ -349,9 +370,10 @@ object GameEngine {
         val treats = if (seg.kind == GameBalanceConfig.WheelPrizeKind.TREATS && petsOn) seg.treats else 0
         val coinsU = if (seg.kind == GameBalanceConfig.WheelPrizeKind.TREATS && petsOn) 0.0 else seg.coinsU
         val coins = GameBalanceConfig.coins(state.level, coinsU)
-        val spins = (seg.spins * ctx.mods.spins).roundToInt()
+        val jackpot = if (seg.kind == GameBalanceConfig.WheelPrizeKind.SPINS) SpinJackpot.roll(GameBalanceConfig.WHEEL_SPIN_JACKPOT_CHANCES, ctx.random) else 0
+        val spins = (maxOf(seg.spins, jackpot) * ctx.mods.spins).roundToInt()
         var s = earn(state, coins).let { it.copy(spins = it.spins + spins, petTreats = it.petTreats + treats, lastWheelDay = ctx.today) }
-        val effects = mutableListOf<GameEffect>(GameEffect.WheelSpun(idx, coins, spins, treats))
+        val effects = mutableListOf<GameEffect>(GameEffect.WheelSpun(idx, coins, spins, treats, if (jackpot > seg.spins) spins else 0))
         if (seg.chest != null) { val r = grantChest(s, seg.chest, ctx); s = r.state; effects += r.effects }
         return ActionResult(s, effects)
     }
@@ -492,6 +514,7 @@ object GameEngine {
         fun unlockAllCards(s: GameState) = s.copy(cards = (0 until Cards.TOTAL).associateWith { maxOf(1, s.cards[it] ?: 0) })
         fun resetDaily(s: GameState) = s.copy(dailyBonus = s.dailyBonus.copy(lastClaimDay = if (s.dailyBonus.lastClaimDay >= 0) s.dailyBonus.lastClaimDay - 1 else -1), lastWheelDay = -1)
         fun addTreats(s: GameState) = s.copy(petTreats = s.petTreats + 20)
+        fun startLuckyBoost(s: GameState, now: Long) = s.copy(luckyBoostUntil = now + GameBalanceConfig.LUCKY_BOOST_DURATION_MS)
         fun damageBuilding(s: GameState) = s.buildings.indexOfFirst { it.stage > 0 && !it.damaged }.let { i -> if (i < 0) s else s.copy(buildings = s.buildings.toMutableList().also { it[i] = it[i].copy(damaged = true) }) }
         fun pendingAttack(s: GameState) = s.copy(pendingActions = s.pendingActions + PendingAction("attack", 1))
         fun pendingRaid(s: GameState) = s.copy(pendingActions = s.pendingActions + PendingAction("raid", 1))

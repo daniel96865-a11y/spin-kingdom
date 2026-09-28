@@ -147,7 +147,8 @@ fun SpinKingdomRoot(vm: GameViewModel, nav: NavHostController = rememberNavContr
             }
             composable(Routes.DEBUG) {
                 DebugScreen(state, vm.allEvents(), onAction = { vm.debug(it) }, onCompleteLevel = { vm.debugCompleteLevel() }, onChest = { vm.debugChest(it) },
-                    onForceEvent = { vm.debugForceEvent(it) }, onReset = { vm.resetGame() }, onBack = { nav.popBackStack() })
+                    onForceEvent = { vm.debugForceEvent(it) }, onReset = { vm.resetGame() }, onBack = { nav.popBackStack() },
+                    onLuckyBoost = { vm.debugLuckyBoost() }, onSpinJackpot = { vm.debugSpinJackpot() })
             }
         }
         overlays.firstOrNull()?.let { o ->

@@ -320,7 +320,9 @@ fun DebugScreen(
     onChest: (ChestType) -> Unit,
     onForceEvent: (String?) -> Unit,
     onReset: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onLuckyBoost: () -> Unit = {},
+    onSpinJackpot: () -> Unit = {}
 ) {
     var level by remember { mutableIntStateOf(state.level) }
     ScreenScaffold(stringResource(R.string.debug_menu), onBack) {
@@ -330,6 +332,8 @@ fun DebugScreen(
             DebugRow(stringResource(R.string.debug_spins)) { onAction { GameEngine.Debug.addSpins(it, 500) } }
             DebugRow(stringResource(R.string.debug_shields)) { onAction { GameEngine.Debug.addShields(it) } }
             DebugRow(stringResource(R.string.debug_treats)) { onAction { GameEngine.Debug.addTreats(it) } }
+            DebugRow(stringResource(R.string.debug_lucky_boost)) { onLuckyBoost() }
+            DebugRow(stringResource(R.string.debug_spin_jackpot)) { onSpinJackpot() }
             DebugRow(stringResource(R.string.debug_cards)) { onAction { GameEngine.Debug.unlockAllCards(it) } }
             DebugRow(stringResource(R.string.debug_finish_buildings)) { onAction { GameEngine.Debug.finishBuildingsExceptLast(it) } }
             DebugRow(stringResource(R.string.debug_complete_level)) { onCompleteLevel() }

@@ -87,6 +87,11 @@ def main():
             arp += tone(note(n_ + 12 * (k // 2)), 0.08, 0.4, "square", r=0.05)
     shimmer = mix(*[delay(tone(note(96 + (i % 5) * 2), 0.12, 0.2, "bell", r=0.1), 0.95 + i * 0.06) for i in range(10)])
     write("sfx_jackpot", mix(arp, shimmer, delay(tone(note(60), 1.2, 0.3, "tri", r=0.6), 0.96)))
+    # spin jackpot: rising electric sweep + sparkling bell cascade + final chord
+    sweep = tone(300, 0.7, 0.35, "square", slide=1500, r=0.2)
+    zap = mix(*[delay(tone(note(84 + (i % 4) * 3), 0.1, 0.25, "bell", r=0.08), 0.1 + i * 0.07) for i in range(10)])
+    chord = delay(mix(tone(note(72), 1.0, 0.3, "tri", r=0.7), tone(note(76), 1.0, 0.25, "tri", r=0.7), tone(note(79), 1.0, 0.25, "tri", r=0.7), tone(note(84), 1.0, 0.25, "bell", r=0.8)), 0.8)
+    write("sfx_spin_jackpot", mix(sweep, zap, chord))
     # attack: cannon boom
     write("sfx_attack", mix(noise(0.8, 0.9, a=0.001, r=0.7, lowpass=0.08), tone(90, 0.6, 0.8, "sine", slide=-50, r=0.5)))
     # explosion (for building hit)

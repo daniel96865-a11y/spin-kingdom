@@ -27,10 +27,35 @@ object GameBalanceConfig {
     // ---------- Multipliers ----------
     val BASE_MULTIPLIERS = listOf(1, 2, 3, 5, 10)
     /** level -> multiplier unlocked at that level */
-    val EXTRA_MULTIPLIERS = listOf(5 to 20, 10 to 50, 20 to 100)
+    val EXTRA_MULTIPLIERS = listOf(5 to 20, 15 to 30, 10 to 50, 20 to 100)
 
-    fun availableMultipliers(level: Int): List<Int> =
-        BASE_MULTIPLIERS + EXTRA_MULTIPLIERS.filter { level >= it.first }.map { it.second }
+    fun availableMultipliers(level: Int, luckyBoost: Boolean = false): List<Int> =
+        (BASE_MULTIPLIERS + EXTRA_MULTIPLIERS.filter { level >= it.first }.map { it.second } +
+            (if (luckyBoost) LUCKY_BOOST_MULTIPLIERS else emptyList())).distinct().sorted()
+
+    // ---------- "Glücks-Einsatz": time limited boost that unlocks x20/x30 early ----------
+    val LUCKY_BOOST_MULTIPLIERS = listOf(20, 30)
+    /** Chance per spin that the boost appears (only while x20/x30 are not all unlocked by level). */
+    const val LUCKY_BOOST_CHANCE_PER_SPIN = 0.012
+    const val LUCKY_BOOST_DURATION_MS = 10 * 60 * 1000L
+    /** Minimum time between the end of one boost and the next one (roughly "once every few hours"). */
+    const val LUCKY_BOOST_COOLDOWN_MS = 3 * 60 * 60 * 1000L
+    const val LUCKY_BOOST_MIN_LEVEL = 2
+
+    // ---------- Spin jackpot: rare big spin rewards ----------
+    /** On 3x Energie: (spins, chance) evaluated in order; absolute chances, not scaled by level. */
+    val SPIN_JACKPOT_CHANCES = listOf(30 to 0.05, 20 to 0.12)
+    /** Whether the spin multiplier also multiplies the spin jackpot. */
+    const val SPIN_JACKPOT_APPLY_MULTIPLIER = true
+    /** Upper bound of a single slot spin jackpot after multiplier/events (keeps x100 sane). */
+    const val SPIN_JACKPOT_MAX_SPINS = 300
+    /** Daily wheel: chance that a spins segment is upgraded to a spin jackpot. */
+    val WHEEL_SPIN_JACKPOT_CHANCES = listOf(30 to 0.04, 20 to 0.08)
+    /** Royal/legendary chests: rare extra spin jackpot. */
+    val CHEST_SPIN_JACKPOT_CHANCES: Map<ChestType, List<Pair<Int, Double>>> = mapOf(
+        ChestType.ROYAL to listOf(30 to 0.02, 20 to 0.06),
+        ChestType.LEGENDARY to listOf(30 to 0.06, 20 to 0.10)
+    )
 
     // ---------- Slot symbol weights (per reel) ----------
     val SYMBOL_WEIGHTS: Map<SlotSymbol, Int> = linkedMapOf(

@@ -113,4 +113,34 @@ class ScreenshotTest : ScreenshotTestBase() {
     @Test fun settings() { launch(midGame(), Routes.SETTINGS); advance(800); shot("19_settings") }
     @Test fun debugMenu() { launch(midGame(), Routes.DEBUG); advance(800); shot("20_debug_menu") }
     @Test fun splash() { launch(GameState(), Routes.SPLASH); advance(900); shot("00_splash") }
+
+    // ---------------------------------------------------------------- 1.1: spin jackpot & lucky boost
+    @Test fun spinJackpotOverlay() {
+        // FixedRandom(0.01) forces the rare +30 spin jackpot on 3x Energie
+        launch(midGame().copy(selectedMultiplier = 1), Routes.VILLAGE, random = de.danielgrebe.spinkingdom.game.FixedRandom(0.01))
+        advance(400)
+        val before = repo.saved.spins
+        vm.spin(listOf(SlotSymbol.ENERGY, SlotSymbol.ENERGY, SlotSymbol.ENERGY))
+        advance(5500)
+        compose.onNodeWithTag("spin_jackpot", useUnmergedTree = true).assertExists()
+        shot("40_spin_jackpot")
+        assertEquals(before - 1 + 10 + 30, repo.saved.spins)
+    }
+
+    @Test fun luckyBoostAnnouncement() {
+        launch(midGame(level = 3), Routes.VILLAGE) { it.debugLuckyBoost() }
+        advance(1500)
+        compose.onNodeWithTag("lucky_boost", useUnmergedTree = true).assertExists()
+        shot("41_lucky_boost_announcement")
+    }
+
+    @Test fun multiplierRowWithLuckyBoost() {
+        val until = FakeTime.START + 7 * 60_000L + 42_000L
+        launch(midGame(level = 3).copy(luckyBoostUntil = until, selectedMultiplier = 30, spins = 120), Routes.VILLAGE)
+        advance(1200)
+        compose.onNodeWithTag("lucky_boost_badge").assertExists()
+        compose.onNodeWithTag("mult_20").assertExists()
+        compose.onNodeWithTag("mult_30").assertExists()
+        shot("42_multiplier_lucky_boost")
+    }
 }

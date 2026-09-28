@@ -1,5 +1,12 @@
 package de.danielgrebe.spinkingdom.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import de.danielgrebe.spinkingdom.ui.draw.drawSymbol
+import de.danielgrebe.spinkingdom.models.SlotSymbol
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.RepeatMode
@@ -117,6 +124,8 @@ private fun Rays(t: Float, color: Color = SK.GoldLight, modifier: Modifier = Mod
 fun OverlayHost(overlay: Overlay, state: GameState, t: Float, onDismiss: () -> Unit, onDouble: () -> Unit, sfx: (Sfx) -> Unit) {
     when (overlay) {
         is Overlay.BigWin -> BigWinOverlay(overlay, t, onDismiss, onDouble)
+        is Overlay.SpinJackpot -> SpinJackpotOverlay(overlay, t, onDismiss, sfx)
+        is Overlay.LuckyBoost -> LuckyBoostOverlay(overlay, t, onDismiss, sfx)
         is Overlay.Chest -> ChestOverlay(overlay, t, onDismiss, sfx)
         is Overlay.LevelComplete -> LevelCompleteOverlay(overlay, t, onDismiss)
         is Overlay.PetLevelUp -> SimpleCelebration(stringResource(R.string.pet_level_up), stringResource(R.string.pet_level_up_text, petName(overlay.pet), overlay.level), t, onDismiss) {
@@ -340,4 +349,62 @@ fun AdOverlay(s: AdOverlayState, t: Float, onClose: () -> Unit) {
             }
         }
     }
+}
+
+
+@Composable
+private fun SpinJackpotOverlay(o: Overlay.SpinJackpot, t: Float, onDismiss: () -> Unit, sfx: (Sfx) -> Unit) {
+    val s = popIn(o)
+    LaunchedEffect(o) { sfx(Sfx.SPIN_JACKPOT) }
+    // counts up to the final number for extra excitement
+    val count = remember(o) { Animatable(0f) }
+    LaunchedEffect(o) { count.animateTo(o.spins.toFloat(), tween(1100, easing = FastOutSlowInEasing)) }
+    GameDialog(onDismiss) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.testTag("spin_jackpot")) {
+            Rays(t, color = Color(0xFF7FE8FF), modifier = Modifier.size(380.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.scale(s)) {
+                val wob = rememberInfiniteTransition(label = "sj").animateFloat(-5f, 5f, infiniteRepeatable(tween(260), RepeatMode.Reverse), label = "sjw")
+                GameText(stringResource(R.string.spin_jackpot_title), Modifier.rotate(wob.value), size = 44.sp, color = SK.GoldLight, align = TextAlign.Center)
+                Spacer(Modifier.height(4.dp))
+                Canvas(Modifier.size(170.dp)) {
+                    val c = center
+                    val r = size.minDimension * 0.26f * (1f + 0.06f * sin(t * 7f))
+                    for (i in 0 until 8) {
+                        val a = (i * 45f + t * 70f) * Math.PI.toFloat() / 180f
+                        val orbit = size.minDimension * 0.42f
+                        drawSymbol(SlotSymbol.ENERGY, Offset(c.x + kotlin.math.cos(a) * orbit, c.y + sin(a) * orbit), size.minDimension * 0.065f, t)
+                    }
+                    drawCircle(Brush.radialGradient(listOf(Color(0xAA7FE8FF), Color.Transparent), c, r * 1.8f), r * 1.8f, c)
+                    drawSymbol(SlotSymbol.ENERGY, c, r, t)
+                }
+                GameText("+${count.value.toInt()} " + stringResource(R.string.spins_short), size = 40.sp, color = Color.White, align = TextAlign.Center)
+                if (o.multiplier > 1) GameText("x${o.multiplier}", size = 20.sp, color = SK.Orange)
+                if (o.extraSpins > 0) GameText(stringResource(R.string.spin_jackpot_extra, o.extraSpins), size = 15.sp, color = Color.White.copy(alpha = 0.85f))
+                Spacer(Modifier.height(6.dp))
+                GameText(stringResource(R.string.spin_jackpot_text), size = 14.sp, color = SK.GoldLight, align = TextAlign.Center)
+                Spacer(Modifier.height(16.dp))
+                GameButton(stringResource(R.string.collect), onDismiss, Modifier.testTag("overlay_ok"))
+            }
+        }
+    }
+    Confetti(o, count = 90)
+}
+
+@Composable
+private fun LuckyBoostOverlay(o: Overlay.LuckyBoost, t: Float, onDismiss: () -> Unit, sfx: (Sfx) -> Unit) {
+    LaunchedEffect(o) { sfx(Sfx.JACKPOT) }
+    SimpleCelebration(stringResource(R.string.lucky_boost_title), stringResource(R.string.lucky_boost_text, (GameBalanceConfig.LUCKY_BOOST_DURATION_MS / 60_000L).toInt()), t, onDismiss) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.testTag("lucky_boost")) {
+            GameBalanceConfig.LUCKY_BOOST_MULTIPLIERS.forEachIndexed { i, m ->
+                val bounce = sin(t * 6f + i * 1.3f) * 6f
+                Box(
+                    Modifier.offset(y = bounce.dp).size(width = 86.dp, height = 60.dp).clip(RoundedCornerShape(14.dp))
+                        .background(Brush.verticalGradient(listOf(SK.GoldLight, SK.Gold, SK.GoldDark)))
+                        .border(3.dp, Color.White, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) { GameText("x$m", size = 28.sp) }
+            }
+        }
+    }
+    Confetti(o, count = 50)
 }

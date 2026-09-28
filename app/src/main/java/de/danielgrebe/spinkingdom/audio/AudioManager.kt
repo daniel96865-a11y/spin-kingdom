@@ -14,7 +14,7 @@ enum class Sfx(val res: Int) {
     CLICK(R.raw.sfx_click), SPIN(R.raw.sfx_spin), REEL_STOP(R.raw.sfx_reel_stop), COIN(R.raw.sfx_coin),
     JACKPOT(R.raw.sfx_jackpot), ATTACK(R.raw.sfx_attack), EXPLOSION(R.raw.sfx_explosion), SHIELD(R.raw.sfx_shield),
     DIG(R.raw.sfx_dig), UPGRADE(R.raw.sfx_upgrade), LEVEL_COMPLETE(R.raw.sfx_level_complete), CHEST(R.raw.sfx_chest),
-    CARD(R.raw.sfx_card), TICK(R.raw.sfx_tick), FAIL(R.raw.sfx_fail)
+    CARD(R.raw.sfx_card), TICK(R.raw.sfx_tick), FAIL(R.raw.sfx_fail), SPIN_JACKPOT(R.raw.sfx_spin_jackpot)
 }
 
 /**

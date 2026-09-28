@@ -1,5 +1,7 @@
 package de.danielgrebe.spinkingdom.ui.screens
 
+import de.danielgrebe.spinkingdom.domain.LuckyBoost
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
@@ -326,10 +328,13 @@ private fun SlotPanel(state: GameState, now: Long, anim: SpinAnim?, lastWin: Spi
     ) {
         SlotReels(anim, lastWin, t, onStopped, actions.sfx, Modifier.fillMaxWidth().height(150.dp).testTag("slot_machine"), onReelCenter)
         Spacer(Modifier.height(8.dp))
-        val options = GameBalanceConfig.availableMultipliers(state.level)
-        MultiplierSelector(options, state.selectedMultiplier, state.spins, anim == null, actions.onMultiplier)
+        val options = LuckyBoost.multipliers(state, now)
+        val boostLeft = if (LuckyBoost.isActive(state, now)) LuckyBoost.millisLeft(state, now) else null
+        val boosted = if (boostLeft != null) GameBalanceConfig.LUCKY_BOOST_MULTIPLIERS.filter { it !in GameBalanceConfig.availableMultipliers(state.level) }.toSet() else emptySet()
+        if (boostLeft != null) LuckyBoostBadge(boostLeft, t)
+        MultiplierSelector(options, state.selectedMultiplier, state.spins, anim == null, actions.onMultiplier, boosted = boosted, t = t)
         Spacer(Modifier.height(8.dp))
-        val mult = GameEngine.effectiveMultiplier(state)
+        val mult = GameEngine.effectiveMultiplier(state, now)
         SpinButton(state.spins > 0, anim != null, mult, actions.onSpin, Modifier.fillMaxWidth())
         Spacer(Modifier.height(4.dp))
         val next = SpinRegen.millisUntilNext(state, now)
