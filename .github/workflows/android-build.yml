@@ -1,7 +1,4 @@
-# GitHub Actions workflow for Spin Kingdom.
-# NOTE: this file must live at .github/workflows/android-build.yml to run. It is stored in ci/ because the
-# token used to create the repository lacked the `workflow` scope. Move it with:
-#   mkdir -p .github/workflows && git mv ci/android-build.yml .github/workflows/android-build.yml
+# GitHub Actions workflow for Spin Kingdom: runs unit/UI tests, builds the unsigned release APK and uploads it as an artifact.
 name: Android build
 
 on:

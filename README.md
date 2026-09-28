@@ -69,8 +69,4 @@ tools/sign-apk.sh app/build/outputs/apk/release/app-release-unsigned.apk out/Spi
 The signing key is **not** in this repository. `tools/sign-apk.sh` looks for it outside the repo.
 
 ## CI
-The workflow is stored at `ci/android-build.yml`, which is **not** an active location. The token that created this repo did not have the `workflow` scope, so GitHub rejected every write to `.github/workflows/`. To activate CI, run:
-```
-mkdir -p .github/workflows && git mv ci/android-build.yml .github/workflows/android-build.yml && git commit -m "Enable CI" && git push
-```
-Pushing this needs a token with the `workflow` scope (`gh auth refresh -s workflow`), or you can do it in the GitHub web UI. The workflow runs the tests, builds the unsigned release APK, and uploads it together with the screenshots and test reports.
+The GitHub Actions workflow `.github/workflows/android-build.yml` runs on every push and pull request to `main`, and can also be started manually (workflow_dispatch). It runs the tests, builds the unsigned release APK, and uploads it as the `spinkingdom-unsigned` artifact, together with the screenshots and test reports.
