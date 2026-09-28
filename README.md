@@ -44,7 +44,7 @@ All screenshots are rendered from the real Compose UI by Robolectric tests (`app
 
 ## Architecture
 ```
-de.danielgrebe.spinkingdom
+de.dgstudios.spinkingdom
 ├── config      GameBalanceConfig, LevelConfig (30 themes + procedural up to 500), EventConfig (assets/events.json)
 ├── models      serializable save-game model (GameState …)
 ├── domain      SlotEngine, SpinRegen, ClockGuard, Cards/Pets/Buildings, ChestEngine, repository interfaces

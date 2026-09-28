@@ -8,11 +8,11 @@ plugins {
 val debugMenuEnabled = (project.findProperty("spinkingdom.debugMenu") as String? ?: "true").toBoolean()
 
 android {
-    namespace = "de.danielgrebe.spinkingdom"
+    namespace = "de.dgstudios.spinkingdom"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.danielgrebe.spinkingdom"
+        applicationId = "de.dgstudios.spinkingdom"
         minSdk = 26
         targetSdk = 35
         versionCode = 2
